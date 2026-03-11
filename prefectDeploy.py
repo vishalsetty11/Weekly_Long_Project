@@ -60,7 +60,7 @@ if __name__ == "__main__":
         job_variables={
             "pip_install": ["requests", "duckdb", "pandas", "motherduck"], 
             "env": {
-                "MOTHERDUCK_TOKEN": "YOUR_ACTUAL_TOKEN_HERE",
+                "MOTHERDUCK_TOKEN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InZpc2hhbHJzZXR0eTExQGdtYWlsLmNvbSIsIm1kUmVnaW9uIjoiYXdzLXVzLWVhc3QtMSIsInNlc3Npb24iOiJ2aXNoYWxyc2V0dHkxMS5nbWFpbC5jb20iLCJwYXQiOiJXbHlhd25KMndXdEdWLW1tWVYtWXlITjAtbEY5clM3V3BkaWF2WmZ5aFpJIiwidXNlcklkIjoiMWNhMjg2MmEtMGY5NC00MTIzLTkyZmEtYzQ1MjFkMDhiOTI5IiwiaXNzIjoibWRfcGF0IiwicmVhZE9ubHkiOmZhbHNlLCJ0b2tlblR5cGUiOiJyZWFkX3dyaXRlIiwiaWF0IjoxNzcyNzgzMjE0fQ.Tgmg9aQlTmvjXQvny9S83STdwk3OkwJmJWAmCqRuUuk",
                 "DB_PATH": "md:nse_market"
             }
         }
