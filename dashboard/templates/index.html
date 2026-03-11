@@ -5,265 +5,221 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NSE Medallion Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.5); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .loading-pulse { animation: pulse-slow 2s infinite; }
+        body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .tab-btn { padding: 12px 24px; font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; transition: all 0.2s; color: #64748b; }
+        .tab-btn.active { color: #10b981; border-color: #10b981; background: rgba(16, 185, 129, 0.05); }
+        .filter-btn { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; }
+        .filter-btn.active { background: #10b981; color: white; border-color: #10b981; }
+        .tv-link:hover { color: #60a5fa; text-decoration: underline; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-[#020617] text-slate-200 font-sans min-h-screen flex flex-col custom-scrollbar">
-
-    <!-- Header -->
-    <header class="border-b border-slate-800 bg-[#0f172a]/80 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <i class="fas fa-chart-pie text-white text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg tracking-tight">NSE <span class="text-blue-500">MarketIntelligence</span></h1>
-                    <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Medallion Data Lake</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-6 text-sm">
-                <div id="last-updated" class="text-slate-500 font-mono text-xs">Sync: --:--</div>
-                <div class="h-4 w-[1px] bg-slate-800"></div>
-                <div class="flex items-center text-emerald-400 font-bold text-xs">
-                    <span class="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></span>
-                    DUCKDB LIVE
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto w-full px-6 py-8 space-y-8 flex-grow">
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Stats Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass p-6 rounded-2xl relative overflow-hidden group">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-archive text-6xl"></i>
-                </div>
-                <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Bronze (Raw)</p>
-                <h3 id="stat-bronze" class="text-3xl font-mono font-bold">--</h3>
-                <p class="text-[10px] text-slate-600 mt-2 italic">Unprocessed CSV records</p>
+        <!-- Header -->
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                    NSE Medallion Intelligence
+                </h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Multi-Timeframe Medallion Data Lake</p>
             </div>
-            <div class="glass p-6 rounded-2xl relative overflow-hidden group border-blue-500/20">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-tint text-6xl text-blue-500"></i>
-                </div>
-                <p class="text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">Silver (Clean)</p>
-                <h3 id="stat-silver" class="text-3xl font-mono font-bold text-blue-400">--</h3>
-                <div class="mt-4 h-1 w-full bg-slate-800 rounded-full">
-                    <div id="silver-progress" class="h-full bg-blue-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
+            <div id="source-badge" class="text-[10px] font-mono px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">CONNECTING...</div>
+        </div>
+
+        <!-- 📑 Tab Navigation -->
+        <div class="glass rounded-xl overflow-hidden shadow-xl">
+            <div class="flex border-b border-white/5 bg-slate-900/30">
+                <button onclick="switchTab('weekly', this)" class="tab-btn active">Weekly Long</button>
+                <button onclick="switchTab('marubozu', this)" class="tab-btn">Marubozu</button>
+                <button onclick="switchTab('hammer', this)" class="tab-btn">Hammer</button>
+            </div>
+
+            <!-- Contextual Filter Bar -->
+            <div id="toolbar" class="p-4 bg-white/5 flex flex-wrap justify-between items-center gap-4">
+                <h2 id="tab-title" class="text-sm font-bold text-slate-300">Strategy Passes</h2>
+                <div id="week-filters" class="flex gap-2">
+                    <button onclick="filterByWeek(0, this)" class="filter-btn active">Current Week</button>
+                    <button onclick="filterByWeek(1, this)" class="filter-btn">Last Week</button>
+                    <button onclick="filterByWeek(-1, this)" class="filter-btn">Show All</button>
                 </div>
             </div>
-            <div class="glass p-6 rounded-2xl relative overflow-hidden group border-emerald-500/20 bg-emerald-500/5">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-emerald-500">
-                    <i class="fas fa-bolt text-6xl"></i>
-                </div>
-                <p class="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">Gold (Signals)</p>
-                <h3 id="stat-gold" class="text-3xl font-mono font-bold text-emerald-400">--</h3>
-                <p class="text-[10px] text-emerald-600 mt-2 font-bold uppercase tracking-tighter"><i class="fas fa-check-circle mr-1"></i> Analysis Ready</p>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto min-h-[400px]">
+                <table class="w-full text-left text-sm">
+                    <thead id="table-head" class="bg-white/5 text-slate-500 uppercase text-[10px] tracking-wider">
+                        <!-- Dynamic Head -->
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-white/5">
+                        <!-- Dynamic Data -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- Sidebar: Catalog -->
-            <aside class="lg:col-span-1">
-                <div class="glass rounded-2xl overflow-hidden sticky top-24">
-                    <div class="p-4 border-b border-slate-800 bg-slate-800/20 flex items-center justify-between">
-                        <h2 class="font-bold text-xs uppercase tracking-widest text-slate-400">Data Catalog</h2>
-                        <i class="fas fa-folder-tree text-blue-500 text-xs"></i>
-                    </div>
-                    <div id="catalog-list" class="p-2 space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar">
-                        <div class="p-8 text-center loading-pulse"><i class="fas fa-spinner fa-spin text-slate-700"></i></div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Workspace -->
-            <div class="lg:col-span-3 space-y-6">
-                <!-- SQL Workspace -->
-                <div class="glass rounded-2xl overflow-hidden shadow-2xl">
-                    <div class="p-4 border-b border-slate-800 bg-slate-800/40 flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <h2 class="font-bold text-sm flex items-center"><i class="fas fa-terminal mr-2 text-emerald-500"></i> SQL Workspace</h2>
-                            <div class="h-4 w-[1px] bg-slate-700"></div>
-                            <button onclick="setQuery('latest_signals')" class="text-[10px] text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tighter">Buy Signals</button>
-                            <button onclick="setQuery('market_health')" class="text-[10px] text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tighter">Market Vol</button>
-                        </div>
-                        <button id="run-btn" onclick="runQuery()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-1.5 rounded-lg font-bold text-xs transition-all active:scale-95 shadow-lg shadow-blue-500/20">
-                            <i class="fas fa-play mr-2"></i>RUN QUERY
-                        </button>
-                    </div>
-                    <div class="relative">
-                        <textarea id="sql-input" spellcheck="false" class="w-full h-40 bg-[#020617] p-6 font-mono text-sm text-emerald-400 outline-none resize-none placeholder:text-slate-800" placeholder="Enter SQL query...">SELECT * FROM gold.daily_signals ORDER BY vol_multiplier DESC LIMIT 15;</textarea>
-                    </div>
-                    <div id="error-box" class="hidden px-6 py-3 bg-red-500/10 border-t border-red-500/20 text-red-400 text-xs font-mono"></div>
-                </div>
-
-                <!-- Results -->
-                <div class="glass rounded-2xl overflow-hidden min-h-[400px]">
-                    <div class="p-4 border-b border-slate-800 bg-slate-800/20 flex items-center justify-between">
-                        <h2 class="font-bold text-xs uppercase tracking-widest text-slate-500">Query Results</h2>
-                        <div id="result-meta" class="text-[10px] font-mono text-slate-600 uppercase tracking-widest">0 rows</div>
-                    </div>
-                    <div id="table-container" class="overflow-auto custom-scrollbar max-h-[500px]">
-                        <div class="p-20 text-center text-slate-700">
-                            <i class="fas fa-table-list text-5xl mb-4 block opacity-20"></i>
-                            <p class="text-xs uppercase tracking-widest font-bold">Run a query to fetch data from the lake</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- Terminal Console -->
+        <div class="glass rounded-xl p-4">
+            <div class="flex justify-between items-center mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                <span><i class="fas fa-terminal mr-2"></i>SQL Workspace</span>
+                <button onclick="runSQL()" class="text-blue-400 hover:text-blue-300">Run Query</button>
+            </div>
+            <textarea id="sql-input" class="w-full h-20 bg-transparent font-mono text-[11px] text-blue-300 outline-none resize-none border-none" placeholder="SELECT * FROM gold.weekly_long ORDER BY signal_date DESC LIMIT 5;"></textarea>
+            <div id="query-status" class="text-[10px] text-red-400 mt-2 hidden"></div>
+            <div id="sql-results-container" class="mt-4 overflow-x-auto hidden">
+                <table class="w-full text-left text-[11px]">
+                    <thead id="sql-head" class="bg-white/5 text-slate-500 uppercase"></thead>
+                    <tbody id="sql-body" class="divide-y divide-white/5"></tbody>
+                </table>
             </div>
         </div>
-    </main>
-
-    <footer class="mt-auto border-t border-slate-900 bg-[#020617] py-6">
-        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-            <p>&copy; 2026 NSE MARKET MEDALLION PIPELINE</p>
-            <div class="flex space-x-6">
-                <span class="text-slate-800">DuckDB Engine v0.10+</span>
-                <span class="text-blue-900">Flask Microservice</span>
-            </div>
-        </div>
-    </footer>
+    </div>
 
     <script>
-        const queries = {
-            latest_signals: "SELECT * FROM gold.daily_signals ORDER BY vol_multiplier DESC LIMIT 15;",
-            market_health: "SELECT trade_date, COUNT(*) as tickers, SUM(turnover_lacs) as total_val FROM silver.bhavcopy_clean GROUP BY 1 ORDER BY 1 DESC LIMIT 10;"
-        };
+        let rawData = [];
+        let activeTab = 'weekly';
 
-        function setQuery(key) {
-            document.getElementById('sql-input').value = queries[key];
-            runQuery();
+        function getTVLink(symbol) { 
+            return `https://in.tradingview.com/chart/?symbol=NSE%3A${symbol.trim()}`; 
         }
 
-        async function fetchStats() {
+        async function init() {
             try {
                 const res = await fetch('/api/stats');
                 const data = await res.json();
-                document.getElementById('stat-bronze').innerText = data.bronze.toLocaleString();
-                document.getElementById('stat-silver').innerText = data.silver.toLocaleString();
-                document.getElementById('stat-gold').innerText = data.gold.toLocaleString();
-                document.getElementById('last-updated').innerText = `Sync: ${data.last_update}`;
-                
-                const pct = (data.silver / data.bronze) * 100 || 0;
-                document.getElementById('silver-progress').style.width = `${pct}%`;
-            } catch (e) { console.error('Stats error:', e); }
+                document.getElementById('source-badge').innerText = `${data.source} LIVE`;
+                switchTab('weekly', document.querySelector('.tab-btn.active'));
+            } catch (e) { console.error(e); }
         }
 
-        async function loadCatalog() {
-            const list = document.getElementById('catalog-list');
-            try {
-                const res = await fetch('/api/catalog');
-                const tables = await res.json();
-                
-                list.innerHTML = '';
-                const layers = { bronze: [], silver: [], gold: [] };
-                tables.forEach(t => layers[t.table_schema].push(t.table_name));
-
-                for (const [layer, names] of Object.entries(layers)) {
-                    const div = document.createElement('div');
-                    div.className = "mb-4";
-                    div.innerHTML = `
-                        <div class="px-3 py-1 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-1">${layer} Layer</div>
-                        <div class="space-y-0.5">
-                            ${names.map(name => `
-                                <button onclick="quickQuery('${layer}.${name}')" class="w-full text-left px-3 py-2 text-xs text-slate-400 hover:text-blue-400 hover:bg-blue-500/5 rounded-lg transition-all flex items-center group">
-                                    <i class="fas fa-table mr-2 text-slate-800 group-hover:text-blue-500/50"></i>
-                                    ${name}
-                                </button>
-                            `).join('')}
-                        </div>
-                    `;
-                    list.appendChild(div);
-                }
-            } catch (e) { list.innerHTML = '<p class="text-red-900 text-[10px] p-4 font-bold">Catalog Load Error</p>'; }
-        }
-
-        function quickQuery(table) {
-            document.getElementById('sql-input').value = `SELECT * FROM ${table} LIMIT 50;`;
-            runQuery();
-        }
-
-        async function runQuery() {
-            const sql = document.getElementById('sql-input').value;
-            const container = document.getElementById('table-container');
-            const runBtn = document.getElementById('run-btn');
-            const errorBox = document.getElementById('error-box');
+        async function switchTab(tab, btn) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             
-            runBtn.disabled = true;
-            runBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>WAIT';
-            errorBox.classList.add('hidden');
-            container.innerHTML = '<div class="p-24 text-center text-blue-500 loading-pulse"><i class="fas fa-database text-4xl"></i></div>';
+            const toolbar = document.getElementById('toolbar');
+            const weekFilters = document.getElementById('week-filters');
+            const title = document.getElementById('tab-title');
+            const resultsTable = document.getElementById('sql-results-container');
+            resultsTable.classList.add('hidden');
 
-            try {
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sql })
+            if(tab === 'weekly') {
+                weekFilters.classList.remove('hidden');
+                title.innerText = "3x Vol & Momentum (Rolling 4W)";
+                const res = await fetch('/api/weekly_long');
+                rawData = await res.json();
+                filterByWeek(0, document.querySelector('.filter-btn.active'));
+            } else if(tab === 'marubozu') {
+                weekFilters.classList.add('hidden');
+                title.innerText = "Marubozu Patterns (Latest Session)";
+                const res = await fetch('/api/marubozu');
+                rawData = await res.json();
+                renderMarubozu();
+            } else if(tab === 'hammer') {
+                weekFilters.classList.add('hidden');
+                title.innerText = "Hammer Patterns (Latest Session)";
+                const res = await fetch('/api/hammer');
+                rawData = await res.json();
+                renderHammer();
+            }
+        }
+
+        function filterByWeek(weekNum, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            let filtered = rawData;
+            if(weekNum !== -1) {
+                const today = new Date();
+                const currentMon = new Date(today);
+                currentMon.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
+                const rangeStart = new Date(currentMon);
+                rangeStart.setDate(currentMon.getDate() - (weekNum * 7));
+                const rangeEnd = new Date(rangeStart);
+                rangeEnd.setDate(rangeStart.getDate() + 6);
+
+                filtered = rawData.filter(s => {
+                    const d = new Date(s.signal_date);
+                    return d >= rangeStart && d <= rangeEnd;
                 });
-                const data = await response.json();
-                
-                if (data.error) {
-                    errorBox.innerText = data.error;
-                    errorBox.classList.remove('hidden');
-                    container.innerHTML = '<div class="p-20 text-center text-slate-800 italic uppercase text-[10px] font-bold">Query Execution Failed</div>';
-                } else {
-                    renderTable(data);
-                }
-            } catch (e) {
-                errorBox.innerText = `Network: ${e.message}`;
-                errorBox.classList.remove('hidden');
-            } finally {
-                runBtn.disabled = false;
-                runBtn.innerHTML = '<i class="fas fa-play mr-2"></i>RUN QUERY';
             }
+            renderWeekly(filtered);
         }
 
-        function renderTable(data) {
-            const container = document.getElementById('table-container');
-            const meta = document.getElementById('result-meta');
-            meta.innerText = `${data.results.length} rows returned`;
-            
-            if (data.results.length === 0) {
-                container.innerHTML = '<div class="p-20 text-center text-slate-700 italic text-xs uppercase font-bold tracking-widest">Empty Dataset Returned</div>';
-                return;
-            }
-
-            let html = `
-                <table class="w-full text-left text-[11px] whitespace-nowrap">
-                    <thead class="bg-slate-900/80 sticky top-0 backdrop-blur-md">
-                        <tr class="text-slate-500 border-b border-slate-800">
-                            ${data.columns.map(c => `<th class="px-6 py-4 font-black uppercase tracking-widest">${c}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800/30">
-                        ${data.results.map(row => `
-                            <tr class="hover:bg-blue-500/[0.03] transition-colors">
-                                ${data.columns.map(c => {
-                                    const val = row[c];
-                                    const isSignal = c === 'symbol' ? 'font-bold text-slate-100' : 'text-slate-400';
-                                    return `<td class="px-6 py-3 font-mono ${isSignal}">${val === null ? '-' : val}</td>`;
-                                }).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            container.innerHTML = html;
+        function renderWeekly(data) {
+            const head = document.getElementById('table-head');
+            const body = document.getElementById('table-body');
+            head.innerHTML = `<tr><th class="px-6 py-4">Pass Date</th><th class="px-6 py-4">Symbol</th><th class="px-6 py-4 text-orange-400">Vol Multiplier</th><th class="px-6 py-4">Deliv Momentum</th><th class="px-6 py-4">Price</th></tr>`;
+            body.innerHTML = data.map(s => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 text-[11px] font-mono text-slate-500">${s.signal_date}</td>
+                    <td class="px-6 py-4 font-bold"><a href="${getTVLink(s.symbol)}" target="_blank" class="text-blue-400 tv-link">${s.symbol} <i class="fas fa-external-link-alt text-[8px] opacity-30"></i></a></td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold text-xs">${(s.weekly_avg_vol/s.six_month_avg_vol).toFixed(1)}x</span></td>
+                    <td class="px-6 py-4 text-xs font-semibold text-slate-300">${s.weekly_avg_deliv}%</td>
+                    <td class="px-6 py-4 font-mono">₹${s.close_price}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="5" class="p-10 text-center text-slate-600">No data found for this period.</td></tr>';
         }
 
-        fetchStats();
-        loadCatalog();
-        setInterval(fetchStats, 30000);
+        function renderMarubozu() {
+            const head = document.getElementById('table-head');
+            const body = document.getElementById('table-body');
+            head.innerHTML = `<tr><th class="px-6 py-4">Date</th><th class="px-6 py-4">Symbol</th><th class="px-6 py-4">Type</th><th class="px-6 py-4">Price</th><th class="px-6 py-4">Chg %</th></tr>`;
+            body.innerHTML = rawData.map(s => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 text-[11px] font-mono text-slate-500">${s.signal_date}</td>
+                    <td class="px-6 py-4 font-bold"><a href="${getTVLink(s.symbol)}" target="_blank" class="text-blue-400 tv-link">${s.symbol}</a></td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.pattern_type === 'BULLISH' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${s.pattern_type}</span></td>
+                    <td class="px-6 py-4 font-mono text-slate-200">₹${s.close_price}</td>
+                    <td class="px-6 py-4 ${s.price_chg_pct > 0 ? 'text-emerald-400' : 'text-red-400'} font-bold">${s.price_chg_pct}%</td>
+                </tr>
+            `).join('') || '<tr><td colspan="5" class="p-10 text-center text-slate-600">No Marubozu patterns detected today.</td></tr>';
+        }
+
+        function renderHammer() {
+            const head = document.getElementById('table-head');
+            const body = document.getElementById('table-body');
+            head.innerHTML = `<tr><th class="px-6 py-4">Date</th><th class="px-6 py-4">Symbol</th><th class="px-6 py-4">Open</th><th class="px-6 py-4">High</th><th class="px-6 py-4">Low</th><th class="px-6 py-4">Close</th><th class="px-6 py-4">Chg %</th></tr>`;
+            body.innerHTML = rawData.map(s => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 text-[11px] font-mono text-slate-500">${s.signal_date}</td>
+                    <td class="px-6 py-4 font-bold"><a href="${getTVLink(s.symbol)}" target="_blank" class="text-blue-400 tv-link">${s.symbol}</a></td>
+                    <td class="px-6 py-4 text-slate-500">${s.open_price}</td>
+                    <td class="px-6 py-4 text-slate-500">${s.high_price}</td>
+                    <td class="px-6 py-4 text-slate-500">${s.low_price}</td>
+                    <td class="px-6 py-4 font-bold text-slate-200">₹${s.close_price}</td>
+                    <td class="px-6 py-4 text-emerald-400 font-bold">${s.price_chg_pct}%</td>
+                </tr>
+            `).join('') || '<tr><td colspan="7" class="p-10 text-center text-slate-600">No Hammer patterns detected today.</td></tr>';
+        }
+
+        async function runSQL() {
+            const sql = document.getElementById('sql-input').value;
+            const status = document.getElementById('query-status');
+            const resContainer = document.getElementById('sql-results-container');
+            const head = document.getElementById('sql-head');
+            const body = document.getElementById('sql-body');
+            status.classList.add('hidden');
+            try {
+                const res = await fetch('/api/query', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({sql})});
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                resContainer.classList.remove('hidden');
+                head.innerHTML = `<tr>${data.columns.map(c => `<th class="px-4 py-2">${c}</th>`).join('')}</tr>`;
+                body.innerHTML = data.results.map(row => `<tr>${data.columns.map(c => {
+                    const v = row[c];
+                    if (c.toLowerCase() === 'symbol' && v) return `<td class="px-4 py-2 font-bold"><a href="${getTVLink(v)}" target="_blank" class="text-blue-400">${v}</a></td>`;
+                    return `<td class="px-4 py-2 text-slate-400 font-mono">${v ?? '-'}</td>`;
+                }).join('')}</tr>`).join('');
+            } catch (e) { status.innerText = e.message; status.classList.remove('hidden'); resContainer.classList.add('hidden'); }
+        }
+
+        init();
     </script>
 </body>
 </html>

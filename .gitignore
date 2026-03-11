@@ -1,13 +1,28 @@
-Environment Variables (Sensitive)
+Environments & Credentials
 
 .env
-
-Python Virtual Environment
-
+config.py
+KiteAPI/
+mage-env/
 .venv/
-env/
 venv/
-ENV/
+
+Temporary & Metadata Files
+
+~$*
+*.docx
+*.xlsx
+.DS_Store
+Thumbs.db
+
+Analysis & Migration Scripts (User requested)
+
+cloudMigration.py
+analyser.py
+Loader.py
+
+Python Cache
+
 pycache/
 *.py[cod]
 
@@ -17,8 +32,3 @@ Local Databases and Data
 *.duckdb.wal
 Bhavcopy/
 data/
-
-OS Metadata
-
-.DS_Store
-Thumbs.db

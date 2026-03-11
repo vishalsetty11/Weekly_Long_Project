@@ -5,3 +5,4 @@ duckdb
 flask
 motherduck
 python-dotenv
+prefect
