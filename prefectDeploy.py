@@ -11,28 +11,29 @@ DB_PATH = os.getenv("DB_PATH", "md:nse_market")
 @task(retries=3, retry_delay_seconds=300)
 def download_task():
     """Step 1: Download from NSE to MotherDuck Staging"""
-    # PRECISE FIX: Import inside task to avoid ModuleNotFoundError on flow load
+    import duckdb 
     from Downloader import download_to_cloud
     return download_to_cloud(DB_PATH)
 
 @task
 def bronze_task():
     """Step 2: Parse raw strings to Bronze Schema"""
-    # PRECISE FIX: Import inside task
+    import pandas as pd
+    import duckdb 
     from ETL.bronze import load_bronze
     load_bronze(DB_PATH)
 
 @task
 def silver_task():
     """Step 3: Clean and Cast to Silver Schema"""
-    # PRECISE FIX: Import inside task
+    import duckdb 
     from ETL.silver import load_silver
     load_silver(DB_PATH)
 
 @task
 def gold_task():
     """Step 4: Generate Buy Signals in Gold Schema"""
-    # PRECISE FIX: Import inside task
+    import duckdb 
     from ETL.gold import load_gold
     load_gold(DB_PATH)
 
