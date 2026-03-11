@@ -1,8 +1,6 @@
-import duckdb
 from datetime import datetime
 import io
-import pandas as pd
-import re
+
 
 def load_bronze(db_path):
     """
@@ -11,6 +9,8 @@ def load_bronze(db_path):
     1. Series: Only EQ, BE, SM, ST, BZ (Equity/SME Stock types).
     2. Symbols: Excludes ETFs, Funds, and Indices using expanded pattern matching.
     """
+    import pandas as pd
+    import duckdb
     con = duckdb.connect(db_path)
     con.execute("CREATE SCHEMA IF NOT EXISTS bronze;")
     
@@ -36,6 +36,7 @@ def load_bronze(db_path):
         return
 
     print(f"🥉 Filtering Stocks to Bronze ({len(pending)} files)...")
+    import re
 
     # PRECISE FILTER CRITERIA
     VALID_SERIES = ['EQ', 'BE', 'SM', 'ST', 'BZ']

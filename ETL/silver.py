@@ -1,5 +1,3 @@
-import duckdb
-
 def load_silver(db_path):
     """
     Silver Stage: 
@@ -7,6 +5,7 @@ def load_silver(db_path):
        Swapped SERIES, DATE1, NO_OF_TRADES for OPEN, HIGH, LOW for pattern detection.
     2. Multi-Timeframe Analytics: Weekly/6M averages.
     """
+    import duckdb
     con = duckdb.connect(db_path)
     con.execute("CREATE SCHEMA IF NOT EXISTS silver;")
     

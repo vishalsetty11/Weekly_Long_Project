@@ -1,5 +1,3 @@
-import duckdb
-
 def load_gold(db_path):
     """
     Gold Stage:
@@ -7,6 +5,7 @@ def load_gold(db_path):
     2. Hammer Pattern Detection: Identifies Valid Hammer candles for the LATEST day.
     3. 4-Week Strategy History: Tracks stocks passing Volume & Delivery filters for the last 28 days.
     """
+    import duckdb
     con = duckdb.connect(db_path)
     con.execute("CREATE SCHEMA IF NOT EXISTS gold;")
 
