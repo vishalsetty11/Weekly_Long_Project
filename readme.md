@@ -17,20 +17,6 @@ Backend: Python 3.11+
 Dashboard: Flask, Tailwind CSS, JavaScript
 Automation: Render CRON Jobs
 
-📂 Project Structure.
-├── pipeline_main.py          # Orchestrator (Main Entry Point)
-├── Downloader.py             # NSE Fetcher (Direct-to-Cloud)
-├── config.py                 # Environment & Path Configuration
-├── .env                      # Secrets (Excluded from Git)
-├── etl/                      
-│   ├── bronze.py             # Raw Semi-structured Ingestion
-│   ├── silver.py             # Data Cleaning & Casting (EQ Series)
-│   └── gold.py               # Signal Generation (EMA 20 + Vol)
-├── dashboard/                
-│   ├── app.py                # Flask Server
-│   └── templates/index.html  # UI Frontend
-└── .github/workflows/        # Automation Logic
-
 
 -> Setup & Installation
 
