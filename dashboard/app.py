@@ -45,7 +45,7 @@ def get_history():
             IS_3X_SURGE,
             IS_BREAKOUT AS IS_PRICE_BREAKOUT
         FROM gold.historical_signals
-        ORDER BY _file_date DESC
+        ORDER BY "3X_180dvol_MULTIPLE" DESC
         """
         results = safe_fetch_all(con.execute(query))
         con.close()
