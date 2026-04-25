@@ -45,7 +45,7 @@ def load_silver(db_path):
             INNER JOIN (
                 SELECT symbol, MAX(_file_date) as friday_date
                 FROM silver.bhavcopy_clean
-                WHERE date_trunc('week', _file_date::TIMESTAMP) < date_trunc('week', CURRENT_DATE::TIMESTAMP)
+                WHERE date_trunc('week', _file_date::TIMESTAMP) <= date_trunc('week', CURRENT_DATE::TIMESTAMP)
                 GROUP BY symbol, date_trunc('week', _file_date::TIMESTAMP)
             ) f ON b.symbol = f.symbol AND b._file_date = f.friday_date
         ),
@@ -92,7 +92,7 @@ def load_silver(db_path):
                 SUM(TTL_TRD_QNTY) as weekly_sum
             FROM silver.bhavcopy_clean
             -- Exclude current incomplete week
-            WHERE date_trunc('week', _file_date::TIMESTAMP) < date_trunc('week', CURRENT_DATE::TIMESTAMP)
+            WHERE date_trunc('week', _file_date::TIMESTAMP) <= date_trunc('week', CURRENT_DATE::TIMESTAMP)
             GROUP BY 1, 2
         ),
         vol_stats AS (
