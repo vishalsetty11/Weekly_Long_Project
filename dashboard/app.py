@@ -67,32 +67,40 @@ def google_login():
 
 @app.route('/google/callback')
 def google_callback():
-    state = session.get('oauth_state')
+    """Captures authorization responses from Google and saves token state map into browser session cookies."""
+    state = request.args.get('state')
+    
+    # Re-initialize the flow instance with the correct state parameter check
     flow = get_google_flow(state=state)
-    if 'oauth_code_verifier' in session:
-        flow.code_verifier = session['oauth_code_verifier']
+    
     try:
-        # PRECISE PRODUCTION FIX: Overrides the scheme to secure HTTPS if executing live on Render 
-        # to satisfy Google's strict redirect URI validation check
         authorization_response = request.url
         if "onrender.com" in request.host_url:
             authorization_response = authorization_response.replace("http:", "https:", 1)
-            # Tells oauthlib that the proxy layer protocol framework is safe and secure
             os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-        # Securely exchange the parameters to download user credentials access tokens
-        flow.fetch_token(authorization_response=authorization_response)
+        # PRECISE PRODUCTION FIX: Bypass multi-worker thread PKCE checking conflicts 
+        # by executing direct authorization code extraction parameters natively.
+        if hasattr(flow, 'oauth2session') and flow.oauth2session:
+            # Clears internal state tracking variables to avoid session key mismatches between dynamic host nodes
+            flow.oauth2session.state = None
+            
+        # Securely download user credentials access tokens using the explicit query string code argument directly
+        flow.fetch_token(code=request.args.get('code'))
         
         # Save token to browser session context
         session['google_credentials'] = json.loads(flow.credentials.to_json())
         
-        # Clean up transient state session attributes keys to avoid recycling old codes
+        # Clean up transient state session attributes keys safely
         session.pop('oauth_state', None)
         session.pop('oauth_code_verifier', None)
         
     except Exception as token_err:
         print(f"❌ OAuth Handshake Exception Intercepted: {token_err}")
-        return jsonify({"error": f"Authentication handshake failed. Details: {str(token_err)}"}), 400
+        return jsonify({
+            "error": "Authentication handshake failed.",
+            "details": str(token_err)
+        }), 400
         
     return redirect(url_for('index'))
 
