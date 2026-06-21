@@ -179,7 +179,7 @@ def load_silver(db_path):
         FROM vol_stats
         WHERE week_end_date = (SELECT MAX(week_end_date) FROM weekly_aggregates);
     """)
-    print("✅ Silver layer: volume_surge_check complete.")
+    print("✅ Silver layer: Volume Surge Check complete.")
 
     # 4. WEEKLY DELIVERY CHECK (> 50%)
     con.execute("DROP TABLE IF EXISTS silver.delivery_weekly_check;")
@@ -193,6 +193,6 @@ def load_silver(db_path):
         GROUP BY 1, 2
         HAVING weekly_deliv_per > 50.0;
     """)
-    print("✅ Silver layer: delivery_weekly_check complete.")
+    print("✅ Silver layer: Delivery Weekly Check complete. \n")
 
     con.close()
