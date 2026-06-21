@@ -34,12 +34,11 @@ def load_silver(db_path):
         HAVING weekly_deliv_per > 50.0;
     """)
 
-    # 2. 6-MONTH BREAKOUT CHECK
+    # 2. 6-MONTH BREAKOUT CHECK WITH RSI AS AN EXPLICIT COLUMN
     con.execute("DROP TABLE IF EXISTS silver.price_breakout_check;")
     con.execute("""
         CREATE OR REPLACE TABLE silver.price_breakout_check AS
         WITH weekly_closes AS (
-            -- 1. Reduce data to only the last trading day of every week
             SELECT b.symbol, b._file_date, b.close_price
             FROM silver.bhavcopy_clean b
             INNER JOIN (
@@ -50,42 +49,70 @@ def load_silver(db_path):
             ) f ON b.symbol = f.symbol AND b._file_date = f.friday_date
         ),
         anchor_friday AS (
-            -- 2. Define the anchor: The most recent Friday present in the data (e.g., 2026-04-17)
             SELECT MAX(_file_date) as ref_date FROM weekly_closes
         ),
-        price_stats AS (
-            -- 3. Calculate high using only the weekly data, relative to our anchor
+        rsi_raw AS (
             SELECT symbol, _file_date, close_price,
-                MAX(close_price) OVER ( 
-                    PARTITION BY symbol 
-                    ORDER BY _file_date 
+                close_price - LAG(close_price, 1) OVER (PARTITION BY symbol ORDER BY _file_date) as change
+            FROM weekly_closes
+        ),
+        rsi_components AS (
+            SELECT symbol, _file_date, close_price,
+                CASE WHEN change > 0 THEN change ELSE 0 END as gain,
+                CASE WHEN change < 0 THEN -change ELSE 0 END as loss,
+                ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY _file_date) as rn
+            FROM rsi_raw
+        ),
+        rsi_smoothed AS (
+            SELECT symbol, _file_date, close_price, rn,
+                SUM(gain * POWER(14.0 / 13.0, rn)) 
+                    OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 150 PRECEDING AND CURRENT ROW)
+                    * POWER(13.0 / 14.0, rn) as avg_gain,
+                SUM(loss * POWER(14.0 / 13.0, rn)) 
+                    OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 150 PRECEDING AND CURRENT ROW)
+                    * POWER(13.0 / 14.0, rn) as avg_loss
+            FROM rsi_components
+        ),
+        rsi_calc AS (
+            SELECT symbol, _file_date, close_price,
+                ROUND(CASE 
+                    WHEN rn < 14 THEN NULL 
+                    WHEN avg_loss = 0 THEN 100
+                    ELSE 100 - (100 / (1 + (avg_gain / avg_loss)))
+                END, 2) as rsi
+            FROM rsi_smoothed
+        ),
+        price_stats AS (
+            SELECT r.symbol, r._file_date, r.close_price, r.rsi,
+                MAX(r.close_price) OVER ( 
+                    PARTITION BY r.symbol 
+                    ORDER BY r._file_date 
                     ROWS BETWEEN 26 PRECEDING AND 1 PRECEDING
                 ) as prev_180d_friday_high,
-                -- New column: 50-week moving average
-                ROUND(AVG(close_price) OVER (
-                    PARTITION BY symbol
-                    ORDER BY _file_date
+                ROUND(AVG(r.close_price) OVER (
+                    PARTITION BY r.symbol
+                    ORDER BY r._file_date
                     ROWS BETWEEN 49 PRECEDING AND CURRENT ROW
                 ),2) as "50w_Moving_avg"
-            FROM weekly_closes
-            WHERE _file_date <= (SELECT ref_date FROM anchor_friday)
+            FROM rsi_calc r
         )
-        -- 4. Final selection: Filter strictly for the anchor Friday
         SELECT 
             p.symbol, 
             p._file_date, 
             p.close_price, 
             p.prev_180d_friday_high,
             p."50w_Moving_avg",
+            p.rsi,
             CASE 
                 WHEN p.close_price > p.prev_180d_friday_high THEN '✅ YES' 
                 ELSE '❌ NO' 
             END as IS_BREAKOUT
         FROM price_stats p
-        WHERE p._file_date = (SELECT ref_date FROM anchor_friday);
+        WHERE p._file_date = (SELECT ref_date FROM anchor_friday)
+          AND p.rsi > 45.0;
     """)
-    print("✅ Silver layer logic: price_breakout_check complete.")
-
+    print("✅ Silver layer logic: price_breakout_check complete with dedicated RSI column.")
+    
     # 3. 3X VOLUME SURGE CHECK
     con.execute("DROP TABLE IF EXISTS silver.volume_surge_check;")
     con.execute("""

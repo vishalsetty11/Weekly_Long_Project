@@ -18,6 +18,7 @@ def load_gold(db_path):
             ROUND(vs.TTL_TRD_QNTY/(NULLIF(vs.avg_vol_180d, 0) * 3), 2) AS "3X_180dvol_MULTIPLE",
             vs.IS_3X_SURGE,
             pb.close_price, 
+            pb.rsi,
             pb."50w_Moving_avg",
             pb.prev_180d_friday_high,
             pb.IS_BREAKOUT

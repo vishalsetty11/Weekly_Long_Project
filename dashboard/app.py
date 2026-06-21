@@ -139,7 +139,7 @@ def get_history():
         con = get_db_connection() 
         query = """
         SELECT _file_date, strftime(_file_date, '%m-%Y') AS month_year, symbol, close_price, 
-               "50w_Moving_avg" AS "50-week moving average", prev_180d_friday_high, "3X_180dvol_MULTIPLE",
+               "50w_Moving_avg" AS "50-week moving average", rsi, prev_180d_friday_high, "3X_180dvol_MULTIPLE",
                IS_3X_SURGE, IS_BREAKOUT AS IS_PRICE_BREAKOUT
         FROM gold.historical_signals ORDER BY "3X_180dvol_MULTIPLE" DESC
         """
