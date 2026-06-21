@@ -20,6 +20,7 @@ def load_silver(db_path):
         FROM bronze.bhavcopy_raw
         WHERE TRIM(SERIES) = 'EQ' AND _file_date IS NOT NULL;
     """)
+    print("✅ Silver layer: Base Cleaning Completed.")
 
     # 3. WEEKLY DELIVERY CHECK (> 50%)
     con.execute("DROP TABLE IF EXISTS silver.delivery_weekly_check;")
@@ -33,6 +34,7 @@ def load_silver(db_path):
         GROUP BY 1, 2
         HAVING weekly_deliv_per > 50.0;
     """)
+    print("✅ Silver layer: Weekly Delivery Check Completed.")
 
     # 2. 6-MONTH BREAKOUT CHECK WITH RECURSIVE WILDER'S RSI & 50W EMA
     con.execute("DROP TABLE IF EXISTS silver.price_breakout_check;")
@@ -134,7 +136,9 @@ def load_silver(db_path):
           AND p.rsi > 50.0
         ORDER BY p.symbol ASC;
     """)
-    print("✅ Silver layer logic: Recursive price_breakout_check complete.")
+    print("✅ Silver layer: Price Breakout Check Completed.")
+    print("✅ Silver layer: 50-week EMA Calculation Completed.")
+    print("✅ Silver layer: RSI Calculation Completed.")
 
     # 3. 3X VOLUME SURGE CHECK
     con.execute("DROP TABLE IF EXISTS silver.volume_surge_check;")
@@ -175,7 +179,7 @@ def load_silver(db_path):
         FROM vol_stats
         WHERE week_end_date = (SELECT MAX(week_end_date) FROM weekly_aggregates);
     """)
-    print("✅ Silver layer logic: volume_surge_check complete.")
+    print("✅ Silver layer: volume_surge_check complete.")
 
     # 4. WEEKLY DELIVERY CHECK (> 50%)
     con.execute("DROP TABLE IF EXISTS silver.delivery_weekly_check;")
@@ -189,6 +193,6 @@ def load_silver(db_path):
         GROUP BY 1, 2
         HAVING weekly_deliv_per > 50.0;
     """)
-    print("✅ Silver layer logic: delivery_weekly_check complete.")
+    print("✅ Silver layer: delivery_weekly_check complete.")
 
     con.close()
