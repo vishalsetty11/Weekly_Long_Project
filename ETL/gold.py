@@ -33,4 +33,4 @@ def load_gold(db_path):
     """)
 
     con.close()
-    print("✅ Gold historical snapshots stored successfully.")
+    print("✅ Gold layer: Historical snapshots stored successfully.")

@@ -86,6 +86,7 @@ def load_bronze(db_path):
             
             con.execute("INSERT INTO bronze.bhavcopy_raw SELECT * FROM df")
             print(f"✅ Ingested {len(df)} stocks from {filename}")
+            print("✅ Bronze layer: Stocks ingested successfully. \n")
             
         except Exception as e:
             print(f"❌ Error parsing {filename}: {e}")

@@ -20,6 +20,7 @@ def load_silver(db_path):
         FROM bronze.bhavcopy_raw
         WHERE TRIM(SERIES) = 'EQ' AND _file_date IS NOT NULL;
     """)
+    print("✅ Silver layer: Base Cleaning Completed.")
 
     # 3. WEEKLY DELIVERY CHECK (> 50%)
     con.execute("DROP TABLE IF EXISTS silver.delivery_weekly_check;")
@@ -33,12 +34,14 @@ def load_silver(db_path):
         GROUP BY 1, 2
         HAVING weekly_deliv_per > 50.0;
     """)
+    print("✅ Silver layer: Weekly Delivery Check Completed.")
 
-    # 2. 6-MONTH BREAKOUT CHECK WITH RSI AS AN EXPLICIT COLUMN
+    # 2. 6-MONTH BREAKOUT CHECK WITH RECURSIVE WILDER'S RSI & 50W EMA
     con.execute("DROP TABLE IF EXISTS silver.price_breakout_check;")
     con.execute("""
         CREATE OR REPLACE TABLE silver.price_breakout_check AS
-        WITH weekly_closes AS (
+        WITH RECURSIVE weekly_closes AS (
+            -- 1. Reduce data to only the last trading day of every week
             SELECT b.symbol, b._file_date, b.close_price
             FROM silver.bhavcopy_clean b
             INNER JOIN (
@@ -49,70 +52,94 @@ def load_silver(db_path):
             ) f ON b.symbol = f.symbol AND b._file_date = f.friday_date
         ),
         anchor_friday AS (
+            -- 2. Define the anchor: The most recent Friday present in the data
             SELECT MAX(_file_date) as ref_date FROM weekly_closes
         ),
         rsi_raw AS (
+            -- Calculate price change from previous week
             SELECT symbol, _file_date, close_price,
                 close_price - LAG(close_price, 1) OVER (PARTITION BY symbol ORDER BY _file_date) as change
             FROM weekly_closes
         ),
         rsi_components AS (
+            -- Use PARTITION BY inside ROW_NUMBER so every single symbol starts exactly at rn = 1
             SELECT symbol, _file_date, close_price,
                 CASE WHEN change > 0 THEN change ELSE 0 END as gain,
                 CASE WHEN change < 0 THEN -change ELSE 0 END as loss,
                 ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY _file_date) as rn
             FROM rsi_raw
         ),
-        rsi_smoothed AS (
-            SELECT symbol, _file_date, close_price, rn,
-                SUM(gain * POWER(14.0 / 13.0, rn)) 
-                    OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 150 PRECEDING AND CURRENT ROW)
-                    * POWER(13.0 / 14.0, rn) as avg_gain,
-                SUM(loss * POWER(14.0 / 13.0, rn)) 
-                    OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 150 PRECEDING AND CURRENT ROW)
-                    * POWER(13.0 / 14.0, rn) as avg_loss
+        -- Intermediate step to compute the accurate Simple Moving Average baselines per stock
+        baselines AS (
+            SELECT symbol, _file_date, close_price, rn, gain, loss,
+                AVG(gain) OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) as sma_gain,
+                AVG(loss) OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) as sma_loss,
+                AVG(close_price) OVER (PARTITION BY symbol ORDER BY _file_date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW) as sma_ema
             FROM rsi_components
         ),
-        rsi_calc AS (
-            SELECT symbol, _file_date, close_price,
+        -- Recursive CTE to compute the smoothing loops
+        indicators_recursive AS (
+            -- Anchor Member: Initialize at each stock's relative 50th historical week
+            SELECT 
+                symbol, _file_date, close_price, rn, gain, loss,
+                sma_gain as avg_gain,
+                sma_loss as avg_loss,
+                sma_ema as ema_val
+            FROM baselines
+            WHERE rn = 50
+            
+            UNION ALL
+            
+            -- Recursive Member: Smooth forward bar-by-bar using standard Wilder/EMA multipliers
+            SELECT r.symbol, r._file_date, r.close_price, r.rn, r.gain, r.loss,
+                (e.avg_gain * 13.0 + r.gain) / 14.0 as avg_gain,
+                (e.avg_loss * 13.0 + r.loss) / 14.0 as avg_loss,
+                (r.close_price * (2.0 / 51.0)) + (e.ema_val * (49.0 / 51.0)) as ema_val
+            FROM baselines r
+            INNER JOIN indicators_recursive e 
+                ON r.symbol = e.symbol 
+               AND r.rn = e.rn + 1
+        ),
+        indicators_final AS (
+            SELECT symbol, _file_date, close_price, rn,
                 ROUND(CASE 
-                    WHEN rn < 14 THEN NULL 
                     WHEN avg_loss = 0 THEN 100
                     ELSE 100 - (100 / (1 + (avg_gain / avg_loss)))
-                END, 2) as rsi
-            FROM rsi_smoothed
+                END, 2) as rsi,
+                ROUND(ema_val, 2) as "50w_Moving_avg"
+            FROM indicators_recursive
         ),
         price_stats AS (
-            SELECT r.symbol, r._file_date, r.close_price, r.rsi,
-                MAX(r.close_price) OVER ( 
-                    PARTITION BY r.symbol 
-                    ORDER BY r._file_date 
+            -- Dynamically fetch the breakout window high directly from the calculated dataset
+            SELECT i.symbol, i._file_date, i.close_price, i."50w_Moving_avg", i.rsi,
+                MAX(i.close_price) OVER (
+                    PARTITION BY i.symbol 
+                    ORDER BY i._file_date 
                     ROWS BETWEEN 26 PRECEDING AND 1 PRECEDING
-                ) as prev_180d_friday_high,
-                ROUND(AVG(r.close_price) OVER (
-                    PARTITION BY r.symbol
-                    ORDER BY r._file_date
-                    ROWS BETWEEN 49 PRECEDING AND CURRENT ROW
-                ),2) as "50w_Moving_avg"
-            FROM rsi_calc r
+                ) as prev_180d_friday_high
+            FROM indicators_final i
         )
+        -- Final Selection: Filter strictly for anchor Friday and enforce momentum bounds
         SELECT 
             p.symbol, 
             p._file_date, 
             p.close_price, 
             p.prev_180d_friday_high,
             p."50w_Moving_avg",
-            p.rsi,
             CASE 
                 WHEN p.close_price > p.prev_180d_friday_high THEN '✅ YES' 
                 ELSE '❌ NO' 
-            END as IS_BREAKOUT
+            END as IS_BREAKOUT,
+            p.rsi
         FROM price_stats p
         WHERE p._file_date = (SELECT ref_date FROM anchor_friday)
-          AND p.rsi > 45.0;
+          AND p.rsi > 50.0
+        ORDER BY p.symbol ASC;
     """)
-    print("✅ Silver layer logic: price_breakout_check complete with dedicated RSI column.")
-    
+    print("✅ Silver layer: Price Breakout Check Completed.")
+    print("✅ Silver layer: 50-week EMA Calculation Completed.")
+    print("✅ Silver layer: RSI Calculation Completed.")
+
     # 3. 3X VOLUME SURGE CHECK
     con.execute("DROP TABLE IF EXISTS silver.volume_surge_check;")
     con.execute("""
@@ -152,7 +179,7 @@ def load_silver(db_path):
         FROM vol_stats
         WHERE week_end_date = (SELECT MAX(week_end_date) FROM weekly_aggregates);
     """)
-    print("✅ Silver layer logic: volume_surge_check complete.")
+    print("✅ Silver layer: Volume Surge Check complete.")
 
     # 4. WEEKLY DELIVERY CHECK (> 50%)
     con.execute("DROP TABLE IF EXISTS silver.delivery_weekly_check;")
@@ -166,6 +193,6 @@ def load_silver(db_path):
         GROUP BY 1, 2
         HAVING weekly_deliv_per > 50.0;
     """)
-    print("✅ Silver layer logic: delivery_weekly_check complete.")
+    print("✅ Silver layer: Delivery Weekly Check complete. \n")
 
     con.close()
