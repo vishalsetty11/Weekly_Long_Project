@@ -131,7 +131,7 @@ def load_silver(db_path):
             p.rsi
         FROM price_stats p
         WHERE p._file_date = (SELECT ref_date FROM anchor_friday)
-          AND p.rsi > 45.0
+          AND p.rsi > 50.0
         ORDER BY p.symbol ASC;
     """)
     print("✅ Silver layer logic: Recursive price_breakout_check complete.")
