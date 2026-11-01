@@ -10,13 +10,13 @@ def load_silver(db_path):
         CREATE TABLE silver.bhavcopy_clean AS
         SELECT 
             TRIM(SYMBOL) as symbol, 
-            CAST(NULLIF(TRIM(OPEN_PRICE), '') AS DECIMAL(12,2)) as open_price,
-            CAST(NULLIF(TRIM(HIGH_PRICE), '') AS DECIMAL(12,2)) as high_price,
-            CAST(NULLIF(TRIM(LOW_PRICE), '') AS DECIMAL(12,2)) as low_price,
-            CAST(NULLIF(TRIM(CLOSE_PRICE), '') AS DECIMAL(12,2)) as close_price,
-            CAST(NULLIF(TRIM(TTL_TRD_QNTY), '') AS BIGINT) as TTL_TRD_QNTY,
-            CAST(NULLIF(TRIM(DELIV_QTY), '') AS BIGINT) as DELIV_QTY,
-            _file_date
+            TRY_CAST(NULLIF(TRIM(OPEN_PRICE), '-') AS DECIMAL(12,2)) as open_price,
+            TRY_CAST(NULLIF(TRIM(HIGH_PRICE), '-') AS DECIMAL(12,2)) as high_price,
+            TRY_CAST(NULLIF(TRIM(LOW_PRICE), '-') AS DECIMAL(12,2)) as low_price,
+            TRY_CAST(NULLIF(TRIM(CLOSE_PRICE), '-') AS DECIMAL(12,2)) as close_price,
+            TRY_CAST(NULLIF(TRIM(TTL_TRD_QNTY), '-') AS BIGINT) as TTL_TRD_QNTY,
+            TRY_CAST(NULLIF(TRIM(DELIV_QTY), '-') AS BIGINT) as DELIV_QTY,
+            TRY_CAST(_file_date AS DATE) as _file_date
         FROM bronze.bhavcopy_raw
         WHERE TRIM(SERIES) = 'EQ' AND _file_date IS NOT NULL;
     """)
