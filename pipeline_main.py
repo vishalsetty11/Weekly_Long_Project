@@ -5,6 +5,12 @@ from Downloader import download_to_cloud
 from ETL.bronze import load_bronze
 from ETL.silver import load_silver
 from ETL.gold import load_gold
+from ETL.financials_scd import run_scd_sync_engine
+
+def is_quarterly_run():
+    # Automatically triggers in active quarterly earnings windows or via environment flag
+    today = datetime.date.today()
+    return (today.month in [1, 4, 7, 10] and today.day <= 15) or os.environ.get('SYNC_FUNDAMENTALS') == 'true'
 
 def get_previous_business_day(today):
     """Calculates the most recent business day for NSE data."""
@@ -44,6 +50,11 @@ def run_nse_pipeline():
 
             # 4. GOLD STAGE: Signal Generation
             load_gold(DB_PATH)
+            print("✅ Core Medallion Layers Complete.")
+
+            if is_quarterly_run():
+                print("\n📈 Executing Fundamentals SCD Pipeline & Analytics...")
+                run_scd_sync_engine(DB_PATH)
             
             print(f"\n✅ Pipeline Complete. Data live in MotherDuck.")
         else:

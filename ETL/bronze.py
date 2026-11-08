@@ -43,11 +43,7 @@ def load_bronze(db_path):
     
     # Expanded list of patterns found in ETFs/Funds/Indices
     # Added keywords like NIFTY, GILT, and specific tricky symbols like HEALTHY/CONSUMER
-    EXCLUDE_PATTERNS = [
-        'BEES$', 'ETF$', 'IETF$', 'CASE$', 'ADD$', 'GOLD$', 'SILVER$', 'LIQUID$', 
-        'BETA$', 'GILT$', 'NIFTY$', 'SDL', 'ADD$', 'VALUE$', 'QUAL$', 'MOM$', 
-        'ALPHA$', 'LOWVOL$', '^HEALTHY$', '^CONSUMER$', '^FINANCE$','^MOGSEC$','^MOMENTUM$','^NIFTY50$','^GROWWLIQID$'
-    ]
+    EXCLUDE_PATTERNS = ['BEES', 'ETF', 'IETF', 'CASE$', 'ADD$', 'GOLD', 'SILVER', 'LIQUID', 'BETA', 'GILT', 'NIFTY', 'SDL', 'VALUE', 'QUAL', 'MOM','ALPHA', 'LOWVOL', '^HEALTHY$', '^CONSUMER$', '^FINANCE$', '^MOGSEC$','^MOMENTUM$', '^GROWWLIQID$']
     exclude_regex = "|".join(EXCLUDE_PATTERNS)
 
     for filename, content in pending:

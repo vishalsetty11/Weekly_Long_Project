@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ symbol }} - Deep Fundamentals & SCD Audit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: #ffffff; backdrop-filter: blur(15px); border: 1px solid rgb(0, 0, 0); }
+        body { margin: 0; padding: 2rem; background-color: #ccc; font-family: 'Inter', sans-serif; color: #000; }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Top Nav -->
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded shadow transition">
+                    ← Main Dashboard
+                </a>
+                <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">{{ symbol }} Analysis</h1>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded border border-emerald-300">
+                    SCD Active Snapshot
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="https://in.tradingview.com/chart/?symbol={{ symbol }}" target="_blank" class="bg-gray-100 border border-gray-300 hover:bg-gray-200 text-xs font-bold px-3 py-2 rounded shadow-sm">
+                    TradingView ↗
+                </a>
+                <a href="https://www.screener.in/company/{{ symbol }}/" target="_blank" class="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-4 py-2 rounded shadow transition">
+                    Open Screener.in ↗
+                </a>
+            </div>
+        </div>
+
+        {% if insights %}
+        <!-- Insight Summary Card -->
+        <div class="glass p-5 rounded-xl shadow border-l-4 border-blue-900 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-black uppercase tracking-wider text-gray-500">Rating:</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded {{ 'bg-emerald-100 text-emerald-800' if insights.valuation_category == 'UNDERVALUED' else 'bg-blue-100 text-blue-800' }}">
+                        {{ insights.valuation_category }}
+                    </span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                        FII {{ insights.institutional_sentiment }}
+                    </span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded {{ 'bg-emerald-100 text-emerald-800' if insights.audit_integrity_status == 'CLEAN' else 'bg-amber-100 text-amber-800' }}">
+                        AUDIT: {{ insights.audit_integrity_status }}
+                    </span>
+                </div>
+                <p class="text-xs text-gray-700 mt-2 font-medium">{{ insights.key_observations }}</p>
+            </div>
+            <div class="text-right">
+                <span class="text-xs text-gray-500 font-bold block">Health Score</span>
+                <span class="text-2xl font-black text-blue-900">{{ insights.health_score }} / 100</span>
+                <span class="text-[10px] uppercase font-bold block text-emerald-700 tracking-wider">Rating: {{ insights.health_rating }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if valuation %}
+        <!-- Custom Fair Value Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass p-5 rounded-xl shadow">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Fair Value</span>
+                <div class="text-2xl font-black text-blue-900 mt-1">₹ {{ valuation.stock_fair_value or '-' }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">(EPS Fair Value / P/E) × CMP</p>
+            </div>
+            <div class="glass p-5 rounded-xl shadow">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">PEG Fair Value</span>
+                <div class="text-2xl font-black text-indigo-900 mt-1">₹ {{ valuation.peg_fair_value or '-' }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">CMP / PEG Ratio</p>
+            </div>
+            <div class="glass p-5 rounded-xl shadow">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">EPS Fair Value (3Y Avg)</span>
+                <div class="text-2xl font-black text-purple-900 mt-1">₹ {{ valuation.eps_fair_value or '-' }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">(EPS Preceding + EPS Last + EPS TTM) / 3</p>
+            </div>
+        </div>
+
+        <!-- 14 Core Metrics Grid -->
+        <div class="glass p-6 rounded-xl shadow space-y-4">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wider border-b pb-2">14 Core Stock Metrics</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Stock P/E</span><span class="font-bold text-sm">{{ valuation.pe or '-' }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Market Cap</span><span class="font-bold text-sm">₹ {{ valuation.market_cap_cr }} Cr</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">CMP</span><span class="font-bold text-sm">₹ {{ valuation.cmp }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">ROCE</span><span class="font-bold text-sm text-emerald-700">{{ valuation.roce }}%</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">EPS (TTM)</span><span class="font-bold text-sm">₹ {{ valuation.eps_ttm }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Debt to Profit</span><span class="font-bold text-sm">{{ valuation.debt_to_profit or '-' }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Dividend Yield</span><span class="font-bold text-sm">{{ valuation.dividend_yield or 0 }}%</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Debt to Equity</span><span class="font-bold text-sm">{{ valuation.debt_to_equity or '0.0' }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Promoter Holding</span><span class="font-bold text-sm">{{ valuation.promoter_holding }}%</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Pledged %</span><span class="font-bold text-sm text-red-600">{{ valuation.pledged_percent or 0 }}%</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">PB / PE</span><span class="font-bold text-sm">{{ valuation.pb_by_pe or '-' }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Cash Equivalent</span><span class="font-bold text-sm">₹ {{ valuation.cash_equivalents_cr or '-' }} Cr</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Altman Z-Score</span><span class="font-bold text-sm">{{ valuation.altman_z_score or '-' }}</span></div>
+                <div class="bg-gray-50 p-2.5 rounded border"><span class="text-[10px] text-gray-500 block">Piotroski Score</span><span class="font-bold text-sm">{{ valuation.piotroski_score or '-' }}</span></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Peer Comparison Matrix (All 17 Metrics) -->
+        {% if peers %}
+        <div class="glass rounded-xl overflow-hidden shadow">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Peer Comparison (17 Target Metrics)</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-[11px] whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                        <tr>
+                            <th class="p-3">Peer Symbol</th>
+                            <th class="p-3 text-right">CMP</th>
+                            <th class="p-3 text-right">P/E</th>
+                            <th class="p-3 text-right">MCap (Cr)</th>
+                            <th class="p-3 text-right">ROCE</th>
+                            <th class="p-3 text-right">EPS</th>
+                            <th class="p-3 text-right">D/Profit</th>
+                            <th class="p-3 text-right">Div %</th>
+                            <th class="p-3 text-right">D/E</th>
+                            <th class="p-3 text-right">Prom %</th>
+                            <th class="p-3 text-right">Pledge %</th>
+                            <th class="p-3 text-right">PB/PE</th>
+                            <th class="p-3 text-right">Cash Eq</th>
+                            <th class="p-3 text-right">Altman Z</th>
+                            <th class="p-3 text-right">Piotroski</th>
+                            <th class="p-3 text-right font-bold text-indigo-900">PEG Fair</th>
+                            <th class="p-3 text-right font-bold text-purple-900">EPS Fair</th>
+                            <th class="p-3 text-right font-bold text-blue-900">Stock Fair</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        {% for p in peers %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-blue-900">{{ p.peer_symbol }}</td>
+                            <td class="p-3 text-right font-mono">₹ {{ p.cmp }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.pe or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.market_cap_cr or '-' }}</td>
+                            <td class="p-3 text-right font-mono text-emerald-600">{{ p.roce }}%</td>
+                            <td class="p-3 text-right font-mono">{{ p.eps_ttm or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.debt_to_profit or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.dividend_yield or 0 }}%</td>
+                            <td class="p-3 text-right font-mono">{{ p.debt_to_equity or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.promoter_holding }}%</td>
+                            <td class="p-3 text-right font-mono text-red-600">{{ p.pledged_percent or 0 }}%</td>
+                            <td class="p-3 text-right font-mono">{{ p.pb_by_pe or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.cash_equivalents_cr or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.altman_z_score or '-' }}</td>
+                            <td class="p-3 text-right font-mono">{{ p.piotroski_score or '-' }}</td>
+                            <td class="p-3 text-right font-mono font-bold text-indigo-900">₹ {{ p.peg_fair_value or '-' }}</td>
+                            <td class="p-3 text-right font-mono font-bold text-purple-900">₹ {{ p.eps_fair_value or '-' }}</td>
+                            <td class="p-3 text-right font-mono font-bold text-blue-900">₹ {{ p.stock_fair_value or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Last 5 Quarters Table -->
+        <div class="glass rounded-xl overflow-hidden shadow">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Last 5 Quarters Results (₹ Cr)</h2>
+            </div>
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                    <tr>
+                        <th class="px-4 py-3">Metric</th>
+                        {% for q in quarters %}<th class="px-4 py-3 text-right font-mono">{{ q.quarter_label }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    <tr><td class="px-4 py-2 font-bold text-slate-800">Sales</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.sales_cr or '-' }}</td>{% endfor %}</tr>
+                    <tr><td class="px-4 py-2 font-bold text-slate-800">Operating Profit</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.operating_profit_cr or '-' }}</td>{% endfor %}</tr>
+                    <tr><td class="px-4 py-2 font-bold text-slate-800">OPM %</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono text-emerald-600 font-bold">{{ q.opm_percent or '-' }}%</td>{% endfor %}</tr>
+                    <tr><td class="px-4 py-2 font-bold text-slate-800">Net Profit</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono font-bold">{{ q.net_profit_cr or '-' }}</td>{% endfor %}</tr>
+                    <tr><td class="px-4 py-2 font-bold text-slate-800">EPS (₹)</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.eps or '-' }}</td>{% endfor %}</tr>
+                    <tr class="bg-gray-50"><td class="px-4 py-2 font-bold text-blue-900">Promoter %</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.promoter_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                    <tr class="bg-gray-50"><td class="px-4 py-2 font-bold text-blue-900">FII %</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.fii_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                    <tr class="bg-gray-50"><td class="px-4 py-2 font-bold text-blue-900">DII %</td>{% for q in quarters %}<td class="px-4 py-2 text-right font-mono">{{ q.dii_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Last 5 Years Annual P&L & Shareholding Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass rounded-xl overflow-hidden shadow">
+                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Last 5 Years Annual P&L (₹ Cr)</h2>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                        <tr>
+                            <th class="px-4 py-3">Metric</th>
+                            {% for y in annual_pnl %}<th class="px-4 py-3 text-right font-mono">{{ y.year_label }}</th>{% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr><td class="px-4 py-2 font-bold">Sales</td>{% for y in annual_pnl %}<td class="px-4 py-2 text-right font-mono">{{ y.sales_cr or '-' }}</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold">Operating Profit</td>{% for y in annual_pnl %}<td class="px-4 py-2 text-right font-mono">{{ y.operating_profit_cr or '-' }}</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold">Net Profit</td>{% for y in annual_pnl %}<td class="px-4 py-2 text-right font-mono font-bold">{{ y.net_profit_cr or '-' }}</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold">EPS (₹)</td>{% for y in annual_pnl %}<td class="px-4 py-2 text-right font-mono">{{ y.eps or '-' }}</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold">Dividend Payout %</td>{% for y in annual_pnl %}<td class="px-4 py-2 text-right font-mono">{{ y.dividend_payout_pct or 0 }}%</td>{% endfor %}</tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="glass rounded-xl overflow-hidden shadow">
+                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Last 5 Years Shareholding Pattern</h2>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                        <tr>
+                            <th class="px-4 py-3">Holder</th>
+                            {% for sh in annual_sh %}<th class="px-4 py-3 text-right font-mono">{{ sh.year_label }}</th>{% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white">
+                        <tr><td class="px-4 py-2 font-bold text-blue-900">Promoters</td>{% for sh in annual_sh %}<td class="px-4 py-2 text-right font-mono">{{ sh.promoter_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold text-blue-900">FIIs</td>{% for sh in annual_sh %}<td class="px-4 py-2 text-right font-mono">{{ sh.fii_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold text-blue-900">DIIs</td>{% for sh in annual_sh %}<td class="px-4 py-2 text-right font-mono">{{ sh.dii_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold text-blue-900">Public</td>{% for sh in annual_sh %}<td class="px-4 py-2 text-right font-mono">{{ sh.public_holding_pct or '-' }}%</td>{% endfor %}</tr>
+                        <tr><td class="px-4 py-2 font-bold text-red-600">Pledged %</td>{% for sh in annual_sh %}<td class="px-4 py-2 text-right font-mono text-red-600">{{ sh.pledged_pct or 0 }}%</td>{% endfor %}</tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- High Volume & Insider Trades -->
+        {% if trades %}
+        <div class="glass rounded-xl overflow-hidden shadow">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Recent High Volume / Insider & Bulk Trades</h2>
+            </div>
+            <table class="w-full text-left text-xs">
+                <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                    <tr>
+                        <th class="p-3">Date</th>
+                        <th class="p-3">Client / Entity</th>
+                        <th class="p-3 text-center">Type</th>
+                        <th class="p-3 text-right">Quantity</th>
+                        <th class="p-3 text-right">Price</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    {% for t in trades %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-3 font-mono">{{ t.trade_date }}</td>
+                        <td class="p-3 font-medium">{{ t.client_name }}</td>
+                        <td class="p-3 text-center font-bold {{ 'text-emerald-600' if t.deal_type == 'BUY' else 'text-red-600' }}">{{ t.deal_type }}</td>
+                        <td class="p-3 text-right font-mono">{{ "{:,}".format(t.quantity) }}</td>
+                        <td class="p-3 text-right font-mono">₹ {{ t.trade_price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- SCD Type 2 Audit Trail (Displayed when restatements occur) -->
+        {% if revisions %}
+        <div class="glass p-5 rounded-xl shadow space-y-3 border-amber-300">
+            <h3 class="text-xs font-bold text-amber-900 uppercase tracking-wide">⚠️ SCD Type 2 Statement Revisions Log</h3>
+            <table class="w-full text-left text-xs bg-amber-50/40 rounded border border-amber-200">
+                <thead class="text-gray-600 border-b border-amber-200">
+                    <tr>
+                        <th class="p-2">Quarter</th>
+                        <th class="p-2">Version</th>
+                        <th class="p-2 text-right">Prior Net Profit</th>
+                        <th class="p-2 text-right">Restated Net Profit</th>
+                        <th class="p-2 text-center">Direction</th>
+                        <th class="p-2">Date Restated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in revisions %}
+                    <tr class="border-b border-amber-100">
+                        <td class="p-2 font-mono font-bold">{{ r.quarter_label }}</td>
+                        <td class="p-2">v{{ r.prior_version }} → v{{ r.current_version }}</td>
+                        <td class="p-2 text-right font-mono">₹ {{ r.prior_net_profit }} Cr</td>
+                        <td class="p-2 text-right font-mono font-bold">₹ {{ r.restated_net_profit }} Cr</td>
+                        <td class="p-2 text-center font-bold {{ 'text-red-600' if r.revision_direction == 'REVISED_DOWN' else 'text-emerald-600' }}">{{ r.revision_direction }}</td>
+                        <td class="p-2 font-mono text-[11px]">{{ r.restated_date }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
