@@ -23,8 +23,8 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'production_secure_handshake
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
-def get_db_connection(read_only=False):
-    return duckdb.connect(DB_PATH, read_only=read_only)
+def get_db_connection():
+    return duckdb.connect(DB_PATH)
 
 def safe_fetch_all(cursor):
     if cursor.description is None:
@@ -148,6 +148,73 @@ def get_history():
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/financials/<symbol>')
+def company_financials(symbol):
+    con = get_db_connection()
+    try:
+        def fetch_dict(query, params):
+            cur = con.execute(query, params)
+            if not cur.description: return []
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+        valuation = (fetch_dict("SELECT * FROM fundamentals.valuation_scd WHERE symbol = ? AND is_current = TRUE", [symbol]) or [{}])[0]
+        insights = (fetch_dict("SELECT * FROM fundamentals.company_insights WHERE symbol = ?", [symbol]) or [{}])[0]
+        quarters = fetch_dict("SELECT * FROM fundamentals.quarterly_scd WHERE symbol = ? AND is_current = TRUE ORDER BY period_date ASC", [symbol])
+        annual_pnl = fetch_dict("SELECT * FROM fundamentals.annual_pnl_scd WHERE symbol = ? AND is_current = TRUE ORDER BY period_date ASC", [symbol])
+        annual_sh = fetch_dict("SELECT * FROM fundamentals.annual_shareholding_scd WHERE symbol = ? AND is_current = TRUE ORDER BY period_date ASC", [symbol])
+        peers = fetch_dict("SELECT * FROM fundamentals.peer_comparison_scd WHERE target_symbol = ? AND is_current = TRUE ORDER BY market_cap_cr DESC", [symbol])
+        trades = fetch_dict("""SELECT trade_date, client_name, deal_type, quantity, trade_price, ROUND((quantity * trade_price) / 10000000.0, 2) AS trade_value_cr, source_category 
+                FROM fundamentals.high_volume_trades 
+                    WHERE symbol = ? 
+                    ORDER BY trade_date DESC, quantity DESC
+                """, [symbol])
+        revisions = fetch_dict("SELECT * FROM fundamentals.v_quarterly_revisions WHERE symbol = ? ORDER BY restated_date DESC", [symbol])
+
+    finally:
+        con.close()
+
+    return render_template(
+        'financials.html',
+        symbol=symbol,
+        valuation=valuation,
+        insights=insights,
+        quarters=quarters,
+        annual_pnl=annual_pnl,
+        annual_sh=annual_sh,
+        peers=peers,
+        trades=trades,
+        revisions=revisions
+    )
+
+@app.route('/trades')
+def view_all_trades():
+    con = get_db_connection()
+    try:
+        def fetch_dict(query):
+            cur = con.execute(query)
+            if not cur.description: return []
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+        all_trades = fetch_dict("""
+            SELECT 
+                symbol,
+                trade_date,
+                client_name,
+                deal_type,
+                quantity,
+                trade_price,
+                ROUND((quantity * trade_price) / 10000000.0, 2) AS trade_value_cr,
+                source_category
+            FROM fundamentals.high_volume_trades
+            ORDER BY trade_date DESC, quantity DESC
+        """)
+    finally:
+        con.close()
+
+    return render_template('trades.html', trades=all_trades)
 
 @app.route('/api/watchlist', methods=['POST'])
 def add_to_watchlist():
